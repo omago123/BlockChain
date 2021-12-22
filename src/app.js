@@ -26,7 +26,7 @@ App = {
         // Acccounts now exposed
         web3.eth.sendTransaction({/* ... */})
       } catch (error) {
-        // User denied account access... 
+        // User denied account access...
       }
     }
     // Legacy dapp browsers...
@@ -45,7 +45,7 @@ App = {
   loadAccount: async () => {
     // Set the current blockchain account
     App.account = web3.eth.accounts[0]
-  }, 
+  },
 
   loadContract: async () => {
     // Create a JavaScript version of the smart contract
