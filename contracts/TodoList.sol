@@ -17,6 +17,7 @@ contract TodoList {
 
     event TaskCompleted(uint256 id, bool completed);
 
+    // call constructor when smart contract run for the first time
     constructor() public {
         createTask("Check out dappuniversity.com");
     }

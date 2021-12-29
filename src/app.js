@@ -7,10 +7,15 @@ App = {
     await App.loadContract()
     await App.render()
   },
- 
+  
+
   loadWeb3: async () => {
+    
+    // check web3 is injected to browser 
     if (typeof web3 !== 'undefined'){
       App.web3Provider = web3.currentProvider
+      // web3 become web3.currentProvider 
+      // metamask use web3.currentProvider
       web3 = new Web3(web3.currentProvider)
     }
     else{
