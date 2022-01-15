@@ -23,6 +23,24 @@ contract Lottery {
 
     uint256 private _pot;
 
+    enum BlockStatus {
+        Checkable,
+        NotRevealed,
+        BlockLimitPassed
+    }
+    enum BettingResult {
+        Fail,
+        Win,
+        Draw
+    }
+    event BET(
+        uint256 index,
+        address bettor,
+        uint256 amount,
+        bytes1 cahllenges,
+        uint256 answerBlockNumber
+    );
+
     constructor() public {
         // msg.sender (address): sender of the message (current call)
         owner = msg.sender;
@@ -41,19 +59,125 @@ contract Lottery {
      * @return 함수가 잘 수행되었는지 확인하는 bool 값
      */
 
+    // save bet bet to the queue
     function bet(bytes1 challenges) public payable returns (bool result) {
-        // check the proper ether is sent
-        require(msg.value == BET_AMOUNT
+        // Check the proper ether is sent
+        require(msg.value == BET_AMOUNT, "Not enough ETH");
 
-        // push bet to the queue
+        // Push bet to the queue
+        require(pushBet(challenges), "Fail to add a new Bet Info");
 
         // emit event
+        emit BET(
+            _tail - 1,
+            msg.sender,
+            msg.value,
+            challenges,
+            block.number + BET_BLOCK_INTERVAL
+        );
 
         return true;
     }
 
-    // save bet bet to the queue
+    /**
+     * @dev 베팅글자와 정답을 확인한다.
+     * @param challenges 베팅 글자
+     * @param answer 블락 해시
+     * @return 정답결과
+     */
+
+    function isMatch(bytes1 challenges, bytes32 answer)
+        public
+        pure
+        returns (BettingResult)
+    {
+        // challenges 0xab
+        // answer 0xab...... ff 3 bytes
+
+        bytes1 c1 = challenges;
+        bytes1 c2 = challenges;
+
+        bytes1 a1 = answer[0];
+        bytes1 a2 = answer[0];
+
+        // Get first number
+        c1 = c1 >> 4; // 0xab -> 0x0a
+        c1 = c1 << 4; // 0x0a -> 0xa0
+
+        a1 = a1 >> 4;
+        a1 = a1 << 4;
+
+        // Get Second number
+        c2 = c2 << 4; // 0xab -> 0xb0
+        c2 = c2 >> 4; // 0xb0 -> 0x0b
+
+        a2 = a2 << 4;
+        a2 = a2 >> 4;
+
+        if (a1 == c1 && a2 == c2) {
+            return BettingResult.Win;
+        }
+
+        if (a1 == c1 || a2 == c2) {
+            return BettingResult.Draw;
+        }
+
+        return BettingResult.Fail;
+    }
+
     // Distribute
+    function distribute() public {
+        // head 3 4 5 6 7 8 9 10 11 12 tail
+        uint256 cur;
+        BetInfo memory b;
+        BlockStatus currentBlockStatus;
+        for (cur = _head; cur < _tail; cur++) {
+            b = _bets[cur];
+            currentBlockStatus = getBlockStatus(b.answerBlockNumber);
+
+            // Checkable : block.number >  AnswerBlockNumber && BLOCK_LIMIT + AnswerBlockNumber
+            if (currentBlockStatus == BlockStatus.Checkable) {
+                // if win, bettor gets pot
+                // if fail, bettor`s money goes pot
+                // if draw, refund bettor`s money
+            }
+
+            // Not Revealed : block.number <= answerblocknumber
+            if (currentBlockStatus == BlockStatus.NotRevealed) {
+                break;
+            }
+
+            // Block Limit Passed : block.number >= answerblocknumber + block_limit
+            if (currentBlockStatus == BlockStatus.BlockLimitPassed) {
+                // refund
+                // emit refund
+            }
+            popBet(cur);
+        }
+    }
+
+    function getBlockStatus(uint256 answerBlockNumber)
+        internal
+        view
+        returns (BlockStatus)
+    {
+        if (
+            block.number > answerBlockNumber &&
+            block.number < BLOCK_LIMIT + answerBlockNumber
+        ) {
+            return BlockStatus.Checkable;
+        }
+
+        if (block.number <= answerBlockNumber) {
+            return BlockStatus.NotRevealed;
+        }
+
+        if (block.number >= answerBlockNumber + BLOCK_LIMIT) {
+            return BlockStatus.BlockLimitPassed;
+        }
+        return BlockStatus.BlockLimitPassed;
+    }
+
     // check the answer
 
     function getBetInfo(uint256 index)
@@ -71,7 +195,7 @@ contract Lottery {
         challenges = b.challenges;
     }
 
-    function pushBet(bytes1 challenges) public returns (bool) {
+    function pushBet(bytes1 challenges) internal returns (bool) {
         BetInfo memory b;
         b.bettor = msg.sender;
         //block.number(uint) : current block number
@@ -84,7 +208,7 @@ contract Lottery {
         return true;
     }
 
-    function popBet(uint256 index) public returns (bool) {
+    function popBet(uint256 index) internal returns (bool) {
         delete _bets[index];
         return true;
     }
