@@ -3,7 +3,7 @@ import React, { Component} from 'react';
 
 import Web3  from 'web3';
 
-let lotteryAddress =   '0x971719be3e765C16BE98fb18d3570AeD099403E2'
+let lotteryAddress =   '0x55815f746a53574523296831B33c2277B2760562'
 let lotteryAbi = [ { "constant": true, "inputs": [], "name": "answerForTest", "outputs": [ { "name": "", "type": "bytes32" } ], "payable": false, "stateMutability": "view", "type": "function", "signature": "0x84f7e4f0" }, { "constant": true, "inputs": [], "name": "owner", "outputs": [ { "name": "", "type": "address" } ], "payable": false, "stateMutability": "view", "type": "function", "signature": "0x8da5cb5b" }, { "inputs": [], "payable": false, "stateMutability": "nonpayable", "type": "constructor", "signature": "constructor" }, { "anonymous": false, "inputs": [ { "indexed": false, "name": "index", "type": "uint256" }, { "indexed": false, "name": "bettor", "type": "address" }, { "indexed": false, "name": "amount", "type": "uint256" }, { "indexed": false, "name": "challenges", "type": "bytes1" }, { "indexed": false, "name": "answerBlockNumber", "type": "uint256" } ], "name": "BET", "type": "event", "signature": "0x100791de9f40bf2d56ffa6dc5597d2fd0b2703ea70bc7548cd74c04f5d215ab7" }, { "anonymous": false, "inputs": [ { "indexed": false, "name": "index", "type": "uint256" }, { "indexed": false, "name": "bettor", "type": "address" }, { "indexed": false, "name": "amount", "type": "uint256" }, { "indexed": false, "name": "challenges", "type": "bytes1" }, { "indexed": false, "name": "answer", "type": "bytes1" }, { "indexed": false, "name": "answerBlockNumber", "type": "uint256" } ], "name": "WIN", "type": "event", "signature": "0x8219079e2d6c1192fb0ff7f78e6faaf5528ad6687e69749205d87bd4b156912b" }, { "anonymous": false, "inputs": [ { "indexed": false, "name": "index", "type": "uint256" }, { "indexed": false, "name": "bettor", "type": "address" }, { "indexed": false, "name": "amount", "type": "uint256" }, { "indexed": false, "name": "challenges", "type": "bytes1" }, { "indexed": false, "name": "answer", "type": "bytes1" }, { "indexed": false, "name": "answerBlockNumber", "type": "uint256" } ], "name": "DRAW", "type": "event", "signature": "0x72ec2e949e4fad9380f9d5db3e2ed0e71cf22c51d8d66424508bdc761a3f4b0e" }, { "anonymous": false, "inputs": [ { "indexed": false, "name": "index", "type": "uint256" }, { "indexed": false, "name": "bettor", "type": "address" }, { "indexed": false, "name": "amount", "type": "uint256" }, { "indexed": false, "name": "challenges", "type": "bytes1" }, { "indexed": false, "name": "answer", "type": "bytes1" }, { "indexed": false, "name": "answerBlockNumber", "type": "uint256" } ], "name": "FAIL", "type": "event", "signature": "0x3b19d607433249d2ebc766ae82ca3848e9c064f1febb5147bc6e5b21d0adebc5" }, { "anonymous": false, "inputs": [ { "indexed": false, "name": "index", "type": "uint256" }, { "indexed": false, "name": "bettor", "type": "address" }, { "indexed": false, "name": "amount", "type": "uint256" }, { "indexed": false, "name": "challenges", "type": "bytes1" }, { "indexed": false, "name": "answerBlockNumber", "type": "uint256" } ], "name": "REFUND", "type": "event", "signature": "0x59c0185881271a0f53d43e6ab9310091408f9e0ff9ae2512613de800f26b8de4" }, { "constant": true, "inputs": [], "name": "getPot", "outputs": [ { "name": "pot", "type": "uint256" } ], "payable": false, "stateMutability": "view", "type": "function", "signature": "0x403c9fa8" }, { "constant": false, "inputs": [ { "name": "challenges", "type": "bytes1" } ], "name": "betAndDistribute", "outputs": [ { "name": "result", "type": "bool" } ], "payable": true, "stateMutability": "payable", "type": "function", "signature": "0xe16ea857" }, { "constant": false, "inputs": [ { "name": "challenges", "type": "bytes1" } ], "name": "bet", "outputs": [ { "name": "result", "type": "bool" } ], "payable": true, "stateMutability": "payable", "type": "function", "signature": "0xf4b46f5b" }, { "constant": true, "inputs": [ { "name": "challenges", "type": "bytes1" }, { "name": "answer", "type": "bytes32" } ], "name": "isMatch", "outputs": [ { "name": "", "type": "uint8" } ], "payable": false, "stateMutability": "pure", "type": "function", "signature": "0x99a167d7" }, { "constant": false, "inputs": [ { "name": "answer", "type": "bytes32" } ], "name": "setAnswerForTest", "outputs": [ { "name": "result", "type": "bool" } ], "payable": false, "stateMutability": "nonpayable", "type": "function", "signature": "0x7009fa36" }, { "constant": false, "inputs": [], "name": "distribute", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function", "signature": "0xe4fc6b6d" }, { "constant": true, "inputs": [ { "name": "index", "type": "uint256" } ], "name": "getBetInfo", "outputs": [ { "name": "answerBlockNumber", "type": "uint256" }, { "name": "bettor", "type": "address" }, { "name": "challenges", "type": "bytes1" } ], "payable": false, "stateMutability": "view", "type": "function", "signature": "0x79141f80" } ]
 
 class App extends Component{
@@ -39,6 +39,8 @@ class App extends Component{
     await this.getPot();
     await this.getBetEvents();
     await this.getWinEvents();
+    await this.getFailEvents();
+    this.makeFinalRecords();
   }
   initWeb3 = async () => {
     // Modern dapp browers...
@@ -47,10 +49,12 @@ class App extends Component{
       this.web3 = new Web3(window.ethereum)
       try {
         // Request account access if needed
-        await window.ethereum.enable()
-        // Accounts now exposed
+         await window.ethereum.send('eth_requestAccounts');
+        // Accounts now exposed, use them
+        //window.ethereum.send('eth_sendTransaction',{from: accounts[0],})
         //this.web3.eth.sendTransaction({/* ... */})
       } catch (error){
+        console.log("error: ",error)
         // User denied account access...
       }
     }
@@ -91,6 +95,28 @@ class App extends Component{
     this.setState({pot:potString})
   }
 
+  makeFinalRecords = () => {
+    let f = 0, w = 0;
+    const records = [...this.state.betRecords];
+    for(let i=0;i<this.state.betRecords.length;i+=1){
+      if(this.state.winRecords.length > 0 && this.state.betRecords[i].index === this.state.winRecords[w].index){
+        records[i].win = 'WIN'
+        records[i].answer = records[i].challenge;
+        records[i].pot = this.web3.utils.fromWei(this.state.winRecords[w].amount,'ether');
+        if(this.state.winRecords.length - 1 > w) w++;
+      } else if(this.state.failRecords.length > 0 && this.state.betRecords[i].index === this.state.failRecords[f].index){
+        records[i].win = 'FAIL'
+        records[i].answer = this.state.failRecords[f].answer;
+        records[i].pot = 0;
+        if(this.state.failRecords.length - 1 > f) f++;
+
+      } else {
+        records[i].answer = 'Not Revealed';
+      }
+    }
+    this.setState({finalRecords:records})
+
+  }
   getBetEvents = async () => {
     const records = [];
     let events = await this.lotteryContract.getPastEvents('BET', {fromBlock:0, toBlock:'latest'});
@@ -109,6 +135,19 @@ class App extends Component{
     this.setState({betRecords:records})
   }
 
+  getFailEvents = async () => {
+    const records = [];
+    let events = await this.lotteryContract.getPastEvents('FAIL', {fromBlock:0, toBlock:'latest'});
+    for(let i=0; i<events.length; i+=1){
+      const record = {}
+      record.index = parseInt(events[i].returnValues.index, 10).toString();
+      record.answer = events[i].returnValues.answer;
+      records.unshift(record);
+    }
+    console.log(records)
+    this.setState({failRecords:records})
+  }
+
   getWinEvents = async () => {
     const records = [];
     let events = await this.lotteryContract.getPastEvents('WIN', {fromBlock:0, toBlock:'latest'});
@@ -118,7 +157,6 @@ class App extends Component{
       record.amount = parseInt(events[i].returnValues.amount, 10).toString();
       records.unshift(record);
     }
-    console.log(records)
     this.setState({winRecords:records})
   }
   
@@ -221,13 +259,13 @@ class App extends Component{
             this.state.finalRecords.map((record, index) => {
               return (
                 <tr key={index}>
-                  <td>0</td>
-                  <td>0</td>
-                  <td>0</td>
-                  <td>0</td>
-                  <td>0</td>
-                  <td>0</td>
-                  <td>0</td>
+                  <td>{record.index}</td>
+                  <td>{record.bettor}</td>
+                  <td>{record.challenges}</td>
+                  <td>{record.answer}</td>
+                  <td>{record.pot}</td>
+                  <td>{record.win}</td>
+                  <td>{record.targetBlockNumber}</td>
                 </tr>
               )
             })
